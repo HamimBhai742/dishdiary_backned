@@ -30,6 +30,7 @@ app.use(
 
       const isAllowed =
         allowedOrigins.includes(origin) ||
+        (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) ||
         origin.startsWith("http://localhost:") ||
         origin.startsWith("http://127.0.0.1:") ||
         origin.endsWith(".vercel.app") ||

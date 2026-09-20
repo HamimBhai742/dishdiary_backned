@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  dishdiary-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dishdiary-backend:latest
+    container_name: dishdiary-backend
+    restart: always
+    ports:
+      - "${PORT:-5942}:5942"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=5942
+    volumes:
+      # Optional: persist local uploads volume across container restarts
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5942/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  uploads_data:
