@@ -21,6 +21,9 @@ const allowedOrigins = [
   "http://127.0.0.1:3000",
   "http://127.0.0.1:5173",
   "https://hamimbhai742.github.io",
+  "https://api-dishdiary.hamim.dpdns.org",
+  "http://92.112.192.226:5942",
+  "http://92.112.192.226",
 ];
 
 app.use(

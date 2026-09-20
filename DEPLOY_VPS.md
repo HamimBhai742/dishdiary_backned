@@ -99,29 +99,50 @@ newgrp docker
 
 ---
 
-## 4. Nginx Reverse Proxy & SSL (Optional / Recommended for Production)
+## 4. Nginx Reverse Proxy & SSL for Cloudflare Subdomain
 
-To expose your backend with HTTPS (`https://api.yourdomain.com`), configure Nginx on your VPS:
+To connect your subdomain `https://api-dishdiary.hamim.dpdns.org/` to your Docker backend on port `5942`:
 
-```nginx
-server {
-    server_name api.yourdomain.com;
+1. **Install Nginx & Certbot:**
+   ```bash
+   sudo apt update
+   sudo apt install -y nginx certbot python3-certbot-nginx
+   ```
 
-    location / {
-        proxy_pass http://127.0.0.1:5942;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
+2. **Create Nginx Configuration:**
+   Create `/etc/nginx/sites-available/dishdiary-api`:
+   ```bash
+   sudo nano /etc/nginx/sites-available/dishdiary-api
+   ```
+   Paste the following:
+   ```nginx
+   server {
+       server_name api-dishdiary.hamim.dpdns.org;
 
-Then install SSL with Certbot:
-```bash
-sudo certbot --nginx -d api.yourdomain.com
-```
+       location / {
+           proxy_pass http://127.0.0.1:5942;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+           proxy_cache_bypass $http_upgrade;
+       }
+   }
+   ```
+
+3. **Enable the site and restart Nginx:**
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/dishdiary-api /etc/nginx/sites-enabled/
+   sudo nginx -t
+   sudo systemctl restart nginx
+   ```
+
+4. **Issue Free SSL Certificate (HTTPS):**
+   ```bash
+   sudo certbot --nginx -d api-dishdiary.hamim.dpdns.org
+   ```
+   *Certbot will automatically install the certificate and enable HTTPS!*
+

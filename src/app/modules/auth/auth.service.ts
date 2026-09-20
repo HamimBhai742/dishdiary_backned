@@ -5,9 +5,16 @@ import { AppError } from "../../error/AppError";
 import { prisma } from "../../lib/prisma";
 import {
   IChangePassword,
+  IForgotPassword,
   ILoginUser,
   IRegisterUser,
+  IResetPassword,
+  IVerifyOtp,
 } from "./auth.interface";
+import {
+  sendOtpEmail,
+  sendPasswordResetSuccessEmail,
+} from "../../utils/email.service";
 
 const registerUser = async (payload: IRegisterUser) => {
   const isUserExist = await prisma.user.findUnique({
@@ -165,9 +172,128 @@ const refreshToken = async (token: string) => {
   return { accessToken };
 };
 
+const forgotPassword = async (payload: IForgotPassword) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      email: payload.email,
+    },
+  });
+
+  if (!user) {
+    throw new AppError("No account found with this email address", 404);
+  }
+
+  if (user.status === "blocked" || user.status === "inactive") {
+    throw new AppError(`Account is ${user.status}. Please contact support.`, 403);
+  }
+
+  // Generate 6-Digit random OTP code
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // Valid for 10 minutes
+  const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      otpCode: otp,
+      otpExpires,
+    },
+  });
+
+  // Send HTML Email via Nodemailer SMTP
+  await sendOtpEmail(user.email, user.name, otp);
+
+  return {
+    message: "A 6-digit verification code has been sent to your email.",
+  };
+};
+
+const verifyOtp = async (payload: IVerifyOtp) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      email: payload.email,
+    },
+  });
+
+  if (!user) {
+    throw new AppError("No account found with this email address", 404);
+  }
+
+  if (!user.otpCode || !user.otpExpires) {
+    throw new AppError("No active OTP request found. Please request a new code.", 400);
+  }
+
+  const isExpired = new Date() > new Date(user.otpExpires);
+  if (isExpired) {
+    throw new AppError("The verification code has expired. Please request a new code.", 400);
+  }
+
+  if (user.otpCode !== payload.otp.trim()) {
+    throw new AppError("Invalid verification code. Please check your email and try again.", 400);
+  }
+
+  return {
+    message: "Verification code verified successfully. You may now reset your password.",
+  };
+};
+
+const resetPassword = async (payload: IResetPassword) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      email: payload.email,
+    },
+  });
+
+  if (!user) {
+    throw new AppError("No account found with this email address", 404);
+  }
+
+  if (!user.otpCode || !user.otpExpires) {
+    throw new AppError("Invalid or expired password reset session.", 400);
+  }
+
+  const isExpired = new Date() > new Date(user.otpExpires);
+  if (isExpired) {
+    throw new AppError("The verification code has expired. Please request a new one.", 400);
+  }
+
+  if (user.otpCode !== payload.otp.trim()) {
+    throw new AppError("Invalid verification code.", 400);
+  }
+
+  // Hash new password using bcrypt
+  const newHashedPassword = await bcrypt.hash(
+    payload.newPassword,
+    Number(config.password_salt)
+  );
+
+  // Update password and clear OTP
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: newHashedPassword,
+      otpCode: null,
+      otpExpires: null,
+    },
+  });
+
+  // Send Confirmation Email
+  sendPasswordResetSuccessEmail(user.email, user.name).catch((err) =>
+    console.warn("[Auth] Failed to send reset success email:", err)
+  );
+
+  return {
+    message: "Password reset successful! You can now sign in with your new password.",
+  };
+};
+
 export const AuthService = {
   registerUser,
   loginUser,
   changePassword,
   refreshToken,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
 };
+

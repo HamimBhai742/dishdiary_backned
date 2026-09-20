@@ -39,9 +39,45 @@ const refreshTokenValidationSchema = z.object({
   }).optional(),
 });
 
+const forgotPasswordValidationSchema = z.object({
+  body: z.object({
+    email: z
+      .string({ required_error: "Email is required" })
+      .email("Invalid email address"),
+  }),
+});
+
+const verifyOtpValidationSchema = z.object({
+  body: z.object({
+    email: z
+      .string({ required_error: "Email is required" })
+      .email("Invalid email address"),
+    otp: z
+      .string({ required_error: "OTP is required" })
+      .length(6, "OTP must be exactly 6 digits"),
+  }),
+});
+
+const resetPasswordValidationSchema = z.object({
+  body: z.object({
+    email: z
+      .string({ required_error: "Email is required" })
+      .email("Invalid email address"),
+    otp: z
+      .string({ required_error: "OTP is required" })
+      .length(6, "OTP must be exactly 6 digits"),
+    newPassword: z
+      .string({ required_error: "New password is required" })
+      .min(6, "Password must be at least 6 characters"),
+  }),
+});
+
 export const AuthValidation = {
   registerValidationSchema,
   loginValidationSchema,
   changePasswordValidationSchema,
   refreshTokenValidationSchema,
+  forgotPasswordValidationSchema,
+  verifyOtpValidationSchema,
+  resetPasswordValidationSchema,
 };
