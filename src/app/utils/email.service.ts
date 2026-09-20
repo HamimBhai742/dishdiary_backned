@@ -40,9 +40,14 @@ export const sendOtpEmail = async (to: string, name: string, otp: string): Promi
     return true;
   }
 
+  const sender = {
+    name: "DishDiary",
+    address: config.smtp.user || "no-reply@dishdiary.com",
+  };
+
   try {
     const info = await transporter.sendMail({
-      from: config.smtp.from,
+      from: sender,
       to,
       subject,
       html,
@@ -70,9 +75,14 @@ export const sendPasswordResetSuccessEmail = async (to: string, name: string): P
     return true;
   }
 
+  const sender = {
+    name: "DishDiary",
+    address: config.smtp.user || "no-reply@dishdiary.com",
+  };
+
   try {
     await transporter.sendMail({
-      from: config.smtp.from,
+      from: sender,
       to,
       subject,
       html,
