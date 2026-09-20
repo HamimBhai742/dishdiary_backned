@@ -20,7 +20,7 @@ if (
 
 export const uploadImageFile = async (
   file: Express.Multer.File
-): Promise<{ url: string; public_id?: string; provider: "cloudinary" | "local" }> => {
+): Promise<{ url: string; public_id?: string; provider: "cloudinary" }> => {
   const isCloudinaryConfigured = Boolean(
     config.cloudinary.cloud_name &&
     config.cloudinary.api_key &&
@@ -28,52 +28,38 @@ export const uploadImageFile = async (
     !config.cloudinary.cloud_name.includes("your_cloud_name")
   );
 
-  if (isCloudinaryConfigured) {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: "dishdiary/recipes",
-          resource_type: "image",
-          transformation: [
-            { quality: "auto:good", fetch_format: "auto" },
-            { width: 1200, crop: "limit" },
-          ],
-        },
-        (error, result?: UploadApiResponse) => {
-          if (error || !result) {
-            console.error("[Cloudinary] Upload failed, falling back:", error);
-            reject(error);
-          } else {
-            resolve({
-              url: result.secure_url,
-              public_id: result.public_id,
-              provider: "cloudinary",
-            });
-          }
+  if (!isCloudinaryConfigured) {
+    throw new Error(
+      "Cloudinary is not configured. Please ensure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are set in .env"
+    );
+  }
+
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: "dishdiary/recipes",
+        resource_type: "image",
+        transformation: [
+          { quality: "auto:good", fetch_format: "auto" },
+          { width: 1200, crop: "limit" },
+        ],
+      },
+      (error, result?: UploadApiResponse) => {
+        if (error || !result) {
+          console.error("[Cloudinary] Upload failed:", error);
+          reject(new Error(`Cloudinary upload failed: ${error?.message || "Unknown error"}`));
+        } else {
+          resolve({
+            url: result.secure_url,
+            public_id: result.public_id,
+            provider: "cloudinary",
+          });
         }
-      );
+      }
+    );
 
-      uploadStream.end(file.buffer);
-    });
-  }
-
-  // Fallback: Save to uploads/ folder if Cloudinary credentials are not provided yet
-  const uploadsDir = path.join(process.cwd(), "uploads");
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-
-  const fileExt = path.extname(file.originalname) || ".jpg";
-  const fileName = `dish-${Date.now()}-${Math.round(Math.random() * 1e6)}${fileExt}`;
-  const filePath = path.join(uploadsDir, fileName);
-
-  fs.writeFileSync(filePath, file.buffer);
-  console.log(`[Storage] Saved file to local storage: /uploads/${fileName}`);
-
-  return {
-    url: `http://localhost:${config.port}/uploads/${fileName}`,
-    provider: "local",
-  };
+    uploadStream.end(file.buffer);
+  });
 };
 
 /**
