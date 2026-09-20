@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  email      String   @unique
+  password   String
+  role       Role     @default(user)
+  status     Status   @default(active)
+  isVerified Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+enum Status {
+  active
+  inactive
+  blocked
+}
+
+enum Role {
+  user
+  admin
+}
+
+model Recipe {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  title        String
+  category     String
+  difficulty   String   @default("Easy")
+  prepTime     Int      @default(15)
+  cookTime     Int      @default(20)
+  servings     Int      @default(4)
+  rating       Float    @default(4.8)
+  reviewsCount Int      @default(0)
+  author       String   @default("Chef")
+  authorRole   String?  @default("Culinary Editor")
+  authorAvatar String?
+  image        String
+  description  String
+  ingredients  String[]
+  instructions String[]
+  featured     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
